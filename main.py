@@ -77,11 +77,14 @@ class PercocetsProphet(commands.Bot):
 
     async def setup_hook(self):
         await self.load_extension('cogs.tts_cog')
-        # Sync slash commands
         await self.tree.sync()
-        self.rotate_status.start()  # Start the status rotation task
         
-    @tasks.loop(minutes=5)  # Rotate status every 5 minutes
+    async def on_ready(self):
+        print(f'{self.user} has awakened to serve Percocet!')
+        # Start status rotation after bot is ready
+        self.rotate_status.start()
+        
+    @tasks.loop(minutes=5)
     async def rotate_status(self):
         self.current_status = (self.current_status + 1) % len(self.status_messages)
         await self.change_presence(
@@ -91,9 +94,6 @@ class PercocetsProphet(commands.Bot):
             )
         )
 
-    async def on_ready(self):
-        print(f'{self.user} has awakened to serve Percocet!')
-        
     async def on_guild_join(self, guild):
         # Find the first text channel we can send messages in
         channel = next((ch for ch in guild.text_channels if ch.permissions_for(guild.me).send_messages), None)
