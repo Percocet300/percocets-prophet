@@ -1,6 +1,10 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "pip install -r requirements.txt"
+buildCommand = """
+apt-get update && \
+apt-get install -y ffmpeg && \
+pip install -r requirements.txt
+"""
 
 [deploy]
 startCommand = "python main.py"
@@ -8,4 +12,4 @@ restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 
 [build.env]
-NIXPACKS_PKGS = "ffmpeg ffmpeg-python opus opus-tools"
+NIXPACKS_PKGS = "ffmpeg opus opus-tools python3-pip"
