@@ -38,6 +38,13 @@ VOICE_EFFECTS = {
 
 AVAILABLE_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
 
+FFMPEG_PATHS = [
+    '/usr/local/bin/ffmpeg',
+    '/usr/bin/ffmpeg',
+    '/root/.nix-profile/bin/ffmpeg',
+    'ffmpeg'
+]
+
 class TTSCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -48,12 +55,15 @@ class TTSCog(commands.Cog):
         self.current_voice = "alloy"
         self.current_effect = "normal"
         
-        # Check for ffmpeg
-        ffmpeg_path = shutil.which('ffmpeg')
-        if ffmpeg_path:
-            print(f"Found FFmpeg at: {ffmpeg_path}")
-        else:
-            print("FFmpeg not found in PATH")
+        # Check for ffmpeg in multiple locations
+        self.ffmpeg_path = None
+        for path in FFMPEG_PATHS:
+            if os.path.exists(path) or shutil.which(path):
+                self.ffmpeg_path = path
+                print(f"Found FFmpeg at: {path}")
+                break
+        if not self.ffmpeg_path:
+            print("FFmpeg not found in any standard location")
 
     def cog_check(self, ctx):
         if ctx.author.id != config.OWNER_ID:
@@ -258,15 +268,13 @@ class TTSCog(commands.Cog):
             if interaction.guild.voice_client.is_playing():
                 interaction.guild.voice_client.stop()
             
-            # Try to find ffmpeg path
-            ffmpeg_path = shutil.which('ffmpeg')
-            if not ffmpeg_path:
-                raise Exception("FFmpeg not found. Path searched: " + os.environ.get('PATH', 'PATH not set'))
+            if not self.ffmpeg_path:
+                raise Exception("FFmpeg not found in any standard location")
                 
             audio_source = discord.FFmpegOpusAudio(
                 audio_bytes.read(),
                 pipe=True,
-                executable=ffmpeg_path
+                executable=self.ffmpeg_path
             )
             
             interaction.guild.voice_client.play(audio_source)
@@ -277,7 +285,8 @@ class TTSCog(commands.Cog):
             )
             
         except Exception as e:
-            error_msg = f"The spirits are troubled: {str(e)}\nFFmpeg path: {shutil.which('ffmpeg')}\nPATH: {os.environ.get('PATH', 'PATH not set')}"
+            paths_checked = "\n".join(FFMPEG_PATHS)
+            error_msg = f"The spirits are troubled: {str(e)}\nPaths checked:\n{paths_checked}\nSelected FFmpeg path: {self.ffmpeg_path}\nPATH: {os.environ.get('PATH', 'PATH not set')}"
             await interaction.followup.send(
                 error_msg,
                 ephemeral=True
