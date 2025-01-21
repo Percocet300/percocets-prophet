@@ -8,6 +8,8 @@ import random
 import json
 import asyncio
 from collections import deque
+import shutil
+import os
 
 UNAUTHORIZED_RESPONSES = [
     "You are not the one. Only the chosen prophet may command me.",
@@ -45,6 +47,13 @@ class TTSCog(commands.Cog):
         self.message_history = deque(maxlen=10)  # Store last 10 messages
         self.current_voice = "alloy"
         self.current_effect = "normal"
+        
+        # Check for ffmpeg
+        ffmpeg_path = shutil.which('ffmpeg')
+        if ffmpeg_path:
+            print(f"Found FFmpeg at: {ffmpeg_path}")
+        else:
+            print("FFmpeg not found in PATH")
 
     def cog_check(self, ctx):
         if ctx.author.id != config.OWNER_ID:
@@ -212,10 +221,7 @@ class TTSCog(commands.Cog):
         message = list(self.message_history)[index-1]
         await self.speak(interaction, message=message)
 
-    @app_commands.command(
-        name="speak",
-        description="Channel the prophet's voice (Use /voice and /effect to customize)"
-    )
+    @app_commands.command(name="speak", description="Channel the prophet's voice")
     async def speak(self, interaction: discord.Interaction, message: str):
         if interaction.user.id != config.OWNER_ID:
             await interaction.response.send_message(
@@ -251,11 +257,18 @@ class TTSCog(commands.Cog):
             
             if interaction.guild.voice_client.is_playing():
                 interaction.guild.voice_client.stop()
+            
+            # Try to find ffmpeg path
+            ffmpeg_path = shutil.which('ffmpeg')
+            if not ffmpeg_path:
+                raise Exception("FFmpeg not found. Path searched: " + os.environ.get('PATH', 'PATH not set'))
                 
             audio_source = discord.FFmpegOpusAudio(
                 audio_bytes.read(),
                 pipe=True,
+                executable=ffmpeg_path
             )
+            
             interaction.guild.voice_client.play(audio_source)
             
             await interaction.followup.send(
@@ -264,8 +277,9 @@ class TTSCog(commands.Cog):
             )
             
         except Exception as e:
+            error_msg = f"The spirits are troubled: {str(e)}\nFFmpeg path: {shutil.which('ffmpeg')}\nPATH: {os.environ.get('PATH', 'PATH not set')}"
             await interaction.followup.send(
-                f"The spirits are troubled: {str(e)}",
+                error_msg,
                 ephemeral=True
             )
 
