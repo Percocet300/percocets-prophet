@@ -6,7 +6,11 @@ pip install -r requirements.txt
 """
 
 [deploy]
-startCommand = "python main.py"
+startCommand = """
+mkdir -p /usr/local/bin && \
+ln -s /root/.nix-profile/bin/ffmpeg /usr/local/bin/ffmpeg && \
+python main.py
+"""
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 

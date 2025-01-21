@@ -42,7 +42,8 @@ FFMPEG_PATHS = [
     '/usr/local/bin/ffmpeg',
     '/usr/bin/ffmpeg',
     '/root/.nix-profile/bin/ffmpeg',
-    'ffmpeg'
+    'ffmpeg',
+    shutil.which('ffmpeg')
 ]
 
 class TTSCog(commands.Cog):
@@ -58,12 +59,21 @@ class TTSCog(commands.Cog):
         # Check for ffmpeg in multiple locations
         self.ffmpeg_path = None
         for path in FFMPEG_PATHS:
-            if os.path.exists(path) or shutil.which(path):
+            if path and (os.path.exists(path) or shutil.which(path)):
                 self.ffmpeg_path = path
                 print(f"Found FFmpeg at: {path}")
                 break
+        
         if not self.ffmpeg_path:
-            print("FFmpeg not found in any standard location")
+            try:
+                # Try to create symlink if we have permission
+                os.makedirs('/usr/local/bin', exist_ok=True)
+                os.symlink('/root/.nix-profile/bin/ffmpeg', '/usr/local/bin/ffmpeg')
+                if os.path.exists('/usr/local/bin/ffmpeg'):
+                    self.ffmpeg_path = '/usr/local/bin/ffmpeg'
+                    print(f"Created FFmpeg symlink at: {self.ffmpeg_path}")
+            except Exception as e:
+                print(f"Failed to create FFmpeg symlink: {e}")
 
     def cog_check(self, ctx):
         if ctx.author.id != config.OWNER_ID:
